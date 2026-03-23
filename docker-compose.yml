@@ -1,0 +1,64 @@
+version: '3.9'
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: geofence_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: geofence_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d geofence_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: geofence_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Node.js API ──────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: geofence_app
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/geofence_db
+      REDIS_URL: redis://redis:6379
+      API_KEY: change-this-in-production
+      FENCE_CACHE_TTL: 300
+      DEVICE_STATE_TTL: 86400
+      WEBHOOK_TIMEOUT_MS: 5000
+      WEBHOOK_RETRY_COUNT: 3
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
