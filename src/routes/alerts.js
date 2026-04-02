@@ -1,9 +1,5 @@
 'use strict';
 
-/**
- * Alert routes — implemented in Part 3
- * Placeholder to prevent server startup errors.
- */
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
